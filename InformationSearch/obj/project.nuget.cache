@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "tV3AeOAttUY7ZRd1kyHJqYpA5lr0moqXkE7PTx+AgM74DI5TxqR6TnTmsY47454TH+yy+4phpzjdEjMaFZWFQw==",
+  "dgSpecHash": "a/iawSmUBMahrDn63FYM9D5W/DIcfJq1yhyatwZbp2hHRtlf43ZyVKYsuvnolRGCrhI4K/UNJd/UkSMVOKzaDQ==",
   "success": true,
   "projectFilePath": "C:\\Projects\\InformationSearch\\InformationSearch\\InformationSearch.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Azatka\\.nuget\\packages\\htmlagilitypack\\1.11.31\\htmlagilitypack.1.11.31.nupkg.sha512"
+    "C:\\Users\\Azatka\\.nuget\\packages\\htmlagilitypack\\1.11.31\\htmlagilitypack.1.11.31.nupkg.sha512",
+    "C:\\Users\\Azatka\\.nuget\\packages\\newtonsoft.json\\13.0.1\\newtonsoft.json.13.0.1.nupkg.sha512"
   ],
   "logs": []
 }
