@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "tV3AeOAttUY7ZRd1kyHJqYpA5lr0moqXkE7PTx+AgM74DI5TxqR6TnTmsY47454TH+yy+4phpzjdEjMaFZWFQw==",
+  "success": true,
+  "projectFilePath": "C:\\Projects\\InformationSearch\\InformationSearch\\InformationSearch.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Azatka\\.nuget\\packages\\htmlagilitypack\\1.11.31\\htmlagilitypack.1.11.31.nupkg.sha512"
+  ],
+  "logs": []
+}

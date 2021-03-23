@@ -1,0 +1,41 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v3.1",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v3.1": {
+      "InformationSearch/1.0.0": {
+        "dependencies": {
+          "HtmlAgilityPack": "1.11.31"
+        },
+        "runtime": {
+          "InformationSearch.dll": {}
+        }
+      },
+      "HtmlAgilityPack/1.11.31": {
+        "runtime": {
+          "lib/netstandard2.0/HtmlAgilityPack.dll": {
+            "assemblyVersion": "1.11.31.0",
+            "fileVersion": "1.11.31.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "InformationSearch/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "HtmlAgilityPack/1.11.31": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yQO6Ero0AAeTrud/Lf9aubFNi9FBJnvC0P9tqH+hxw2vNz3hzENNMU9Ep4pm5m34m1MU8BMHj8wOJaB8OfWK8g==",
+      "path": "htmlagilitypack/1.11.31",
+      "hashPath": "htmlagilitypack.1.11.31.nupkg.sha512"
+    }
+  }
+}
