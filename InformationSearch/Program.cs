@@ -77,7 +77,7 @@ namespace InformationSearch
                                 }
                             }
                         }
-                        lemmasWriter.WriteLine($"{word} {string.Join(" ", lemmas)}");
+                        lemmasWriter.WriteLine($"{word} {string.Join(" ", lemmas.Distinct())}");
                     }
                 }
             }
