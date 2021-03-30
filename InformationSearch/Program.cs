@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace InformationSearch
 {
@@ -16,19 +17,82 @@ namespace InformationSearch
         private static string Task1Path => $@"{RootPath}\Task1";
         private static string Task2Path => $@"{RootPath}\Task2";
         private static string Task3Path => $@"{RootPath}\Task3";
+        private static string Task4Path => $@"{RootPath}\Task4";
         private static Lemmatizer Lemmatizer;
 
         static void Main(string[] args)
         {
             //ProcessPages();
             //Lemmatize(new Lemmatizer(new StemDownloader().GetLocalPath()));
-            File.WriteAllLines($"{Task3Path}\\searchResult.txt", Search("арестовали появится заблокированы").Select(x => x.ToString()));
+            //File.WriteAllLines($"{Task3Path}\\searchResult.txt", Search("арестовали появится заблокированы").Select(x => x.ToString()));
+            CreateTfIdf();
+        }
+
+        private static void CreateTfIdf()
+        {
+            var lemmasWithIndexes = File.ReadAllLines($"{Task3Path}\\invertedIndex.txt");
+            var lemmaToIndexesDict = new Dictionary<string, List<int>>();
+            foreach (var lemmaWithIndexesString in lemmasWithIndexes)
+            {
+                var lemmaIndexes = lemmaWithIndexesString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                lemmaToIndexesDict.Add(lemmaIndexes[0], new List<int>(lemmaIndexes.Skip(1).Select(int.Parse)));
+            }
+
+            var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
+            var texts = new List<List<string>>(100);
+            for (int i = 0; i < PagesCount; i++)
+            {
+                var fileText = File.ReadAllText($"{Task1Path}\\pages\\page_{i + 1}.txt");
+                var sb = new StringBuilder();
+                foreach (char c in fileText)
+                {
+                    if ('а' <= c && c <= 'я' || 'А' <= c && c <= 'Я')
+                        sb.Append(c);
+                    else
+                        sb.Append(" ");
+                }
+
+                var words = sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(x => x.ToLowerInvariant());
+                var lemmatizedWords = new List<string>();
+                foreach (var word in words)
+                {
+                    var res = lemmatizer.Lemmatize(word);
+                    var lemma = GetLemma(res);
+                    if (lemma != null)
+                    {
+                        lemmatizedWords.Add(lemma);
+                    }
+                }
+                texts.Add(lemmatizedWords);
+            }
+
+            foreach (var (lemma, indexes) in lemmaToIndexesDict)
+            {
+                var idf = Math.Log10(Convert.ToDouble(PagesCount) / indexes.Count);
+                foreach (var index in indexes)
+                {
+                    using (var writer = File.AppendText($"{Task4Path}\\page_{index + 1}_tfidf.txt"))
+                    {
+                        var text = texts[index];
+                        var wordEntriesCount = 0;
+                        foreach (var word in text)
+                        {
+                            if (word == lemma)
+                            {
+                                wordEntriesCount++;
+                            }
+                        }
+                        var tf = Convert.ToDouble(wordEntriesCount) / text.Count;
+                        writer.WriteLine($"{lemma} tf={tf:0.#######} idf={idf:0.#######} tf-idf={tf*idf:0.#######}");
+                    }
+                }
+            }
         }
 
         private static List<int> Search(string query)
         {
             var stopwords = File.ReadAllLines(StopWordsPath);
-            var words = query.Split(" ").Where(x => x != "" && !stopwords.Contains(x)).ToList();
+            var words = query.Split(" ", StringSplitOptions.RemoveEmptyEntries).Where(x => x != "" && !stopwords.Contains(x)).ToList();
             var excludeWords = new HashSet<string>();
             var includeWords = new HashSet<string>();
             foreach (var word in words)
@@ -74,7 +138,7 @@ namespace InformationSearch
             var lemmaToIndexesDict = new Dictionary<string, HashSet<int>>();
             foreach (var lemmaWithIndexes in lemmasWithIndexes)
             {
-                var parsedString = lemmaWithIndexes.Split(' ');
+                var parsedString = lemmaWithIndexes.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 lemmaToIndexesDict.Add(parsedString[0], new HashSet<int>(parsedString.Skip(1).Select(x => int.Parse(x))));
             }
 
@@ -146,12 +210,12 @@ namespace InformationSearch
                 var sb = new StringBuilder();
                 foreach (char c in fileText)
                 {
-                    if (!char.IsPunctuation(c))
+                    if ('а' <= c && c <= 'я' || 'А' <= c && c <= 'Я')
                         sb.Append(c);
                     else
                         sb.Append(" ");
                 }
-                allWords.AddRange(sb.ToString().Split(' '));
+                allWords.AddRange(sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
             }
             var stopWords = File.ReadAllLines(StopWordsPath);
 
