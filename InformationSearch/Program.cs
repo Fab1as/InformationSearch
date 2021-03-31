@@ -14,10 +14,10 @@ namespace InformationSearch
         public static int PagesCount => 100;
         private static string RootPath = @"C:\Projects\InformationSearch";
         private static string StopWordsPath = $@"{RootPath}\InformationSearch\StopWords.txt";
-        private static string Task1Path => $@"{RootPath}\Task1";
-        private static string Task2Path => $@"{RootPath}\Task2";
-        private static string Task3Path => $@"{RootPath}\Task3";
-        private static string Task4Path => $@"{RootPath}\Task4";
+        private static string Task1Path => $@"{RootPath}\Task1Updated";
+        private static string Task2Path => $@"{RootPath}\Task2Updated";
+        private static string Task3Path => $@"{RootPath}\Task3Updated";
+        private static string Task4Path => $@"{RootPath}\Task4Updated";
         private static Lemmatizer Lemmatizer;
 
         static void Main(string[] args)
@@ -43,16 +43,7 @@ namespace InformationSearch
             for (int i = 0; i < PagesCount; i++)
             {
                 var fileText = File.ReadAllText($"{Task1Path}\\pages\\page_{i + 1}.txt");
-                var sb = new StringBuilder();
-                foreach (char c in fileText)
-                {
-                    if ('а' <= c && c <= 'я' || 'А' <= c && c <= 'Я')
-                        sb.Append(c);
-                    else
-                        sb.Append(" ");
-                }
-
-                var words = sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(x => x.ToLowerInvariant());
+                var words = ParseTextToWordsInLower(fileText);
                 var lemmatizedWords = new List<string>();
                 foreach (var word in words)
                 {
@@ -190,7 +181,7 @@ namespace InformationSearch
             var parser = new PageParser(BaseUrl, PagesCount);
             var links = parser.GetLinks();
             var documents = parser.ParsePages(links).ToList();
-            using (var indexWriter = new StreamWriter($"{Task1Path}\\index.txt", true))
+            using (var indexWriter = File.AppendText($"{Task1Path}\\index.txt"))
             {
                 var index = 1;
                 foreach (var document in documents)
@@ -207,42 +198,28 @@ namespace InformationSearch
             for (int i = 1; i <= PagesCount; i++)
             {
                 var fileText = File.ReadAllText($"{Task1Path}\\pages\\page_{i}.txt");
-                var sb = new StringBuilder();
-                foreach (char c in fileText)
-                {
-                    if ('а' <= c && c <= 'я' || 'А' <= c && c <= 'Я')
-                        sb.Append(c);
-                    else
-                        sb.Append(" ");
-                }
-                allWords.AddRange(sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                allWords.AddRange(ParseTextToWordsInLower(fileText));
             }
             var stopWords = File.ReadAllLines(StopWordsPath);
-
-            var words = allWords.Select(x => x.ToLowerInvariant()).ToHashSet();
+            var words = allWords.Where(x => !stopWords.Contains(x)).ToHashSet();
             var lemmaToWordsDict = new Dictionary<string, HashSet<string>>();
 
             using (var wordsWriter = new StreamWriter($"{Task2Path}\\words.txt", true))
             {
                 foreach (var word in words)
                 {
-                    wordsWriter.WriteLine(word);
-                    var res = lemmatizer.Lemmatize(word);
-                    foreach (var analyze in res)
+                    var lemmatizeResult = lemmatizer.Lemmatize(word);
+                    var lemma = GetLemma(lemmatizeResult);
+                    if (!string.IsNullOrEmpty(lemma))
                     {
-                        foreach (var analys in analyze.Analysis)
+                        wordsWriter.WriteLine(word);
+                        if (lemmaToWordsDict.ContainsKey(lemma))
                         {
-                            if (!string.IsNullOrEmpty(analys.Lex) && stopWords.All(x => x != analys.Lex))
-                            {
-                                if (lemmaToWordsDict.ContainsKey(analys.Lex))
-                                {
-                                    lemmaToWordsDict[analys.Lex].Add(word);
-                                }
-                                else
-                                {
-                                    lemmaToWordsDict.Add(analys.Lex, new HashSet<string>() { word });
-                                }
-                            }
+                            lemmaToWordsDict[lemma].Add(word);
+                        }
+                        else
+                        {
+                            lemmaToWordsDict.Add(lemma, new HashSet<string> { word });
                         }
                     }
                 }
@@ -251,24 +228,39 @@ namespace InformationSearch
             using (var lemmasWriter = new StreamWriter($"{Task2Path}\\lemmas.txt", true))
             {
                 foreach (var (lemma, wordForms) in lemmaToWordsDict)
-                {
                     lemmasWriter.WriteLine($"{lemma} {string.Join(" ", wordForms)}");
-                }
             }
 
             CreateInvertedIndex(lemmaToWordsDict);
+        }
+
+        private static IEnumerable<string> ParseTextToWordsInLower(string text)
+        {
+            var sb = new StringBuilder();
+            foreach (char c in text)
+            {
+                if ('а' <= c && c <= 'я' || 'А' <= c && c <= 'Я')
+                    sb.Append(char.ToLowerInvariant(c));
+                else
+                    sb.Append(" ");
+            }
+
+            return sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         }
 
         private static void CreateInvertedIndex(Dictionary<string, HashSet<string>> lemmaToWordsDict)
         {
             var sortedDict = lemmaToWordsDict.ToImmutableSortedDictionary();
             var invertedIndexDict = sortedDict.ToDictionary(x => x.Key, x => new List<int>());
+            var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
             for (int i = 0; i < PagesCount; i++)
             {
-                var pageText = File.ReadAllText($@"{Task1Path}\pages\page_{i + 1}.txt").ToLowerInvariant();
+                var pageText = File.ReadAllText($@"{Task1Path}\pages\page_{i + 1}.txt");
+                var pageWords = ParseTextToWordsInLower(pageText);
+                var lemmatizedTextWords = lemmatizer.LemmatizeWordsList(pageWords);
                 foreach (var (lemma, words) in sortedDict)
                 {
-                    if (words.Any(x => pageText.Contains(x)))
+                    if (lemmatizedTextWords.Any(x => string.Equals(lemma, x, StringComparison.InvariantCultureIgnoreCase)))
                     {
                         if (invertedIndexDict.ContainsKey(lemma))
                         {

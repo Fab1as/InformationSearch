@@ -37,6 +37,37 @@ namespace InformationSearch
             return lemmatized.Select(x => x.GetText());
         }
 
+        public List<string> LemmatizeWordsList(IEnumerable<string> words)
+        {
+            var lemmatizedWords = new List<string>();
+            foreach (var word in words)
+            {
+                var lemmatizedWord = GetLemma(Lemmatize(word));
+                if (!string.IsNullOrEmpty(lemmatizedWord))
+                {
+                    lemmatizedWords.Add(lemmatizedWord);
+                }
+            }
+
+            return lemmatizedWords;
+        }
+
+        private static string GetLemma(WordDefenition[] definitions)
+        {
+            foreach (var analyze in definitions)
+            {
+                foreach (var analys in analyze.Analysis)
+                {
+                    if (!string.IsNullOrEmpty(analys.Lex))
+                    {
+                        return analys.Lex;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         private ProcessStartInfo CreateStartInfo(string path)
         {
             return new ProcessStartInfo

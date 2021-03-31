@@ -16,6 +16,19 @@ namespace InformationSearch
     {
         private readonly string _baseUrl;
         private readonly int _pagesCount;
+        private readonly List<string> Links = new List<string>
+        {
+            @"https://ria.ru/world/",
+            @"https://ria.ru/economy/",
+            @"https://ria.ru/society/",
+            @"https://ria.ru/incidents/",
+            @"https://ria.ru/defense_safety/",
+            @"https://ria.ru/science/",
+            @"https://ria.ru/culture/",
+            @"https://ria.ru/religion/",
+            @"https://ria.ru/politics/",
+            @"https://ria.ru/tourism/"
+        };
 
         public PageParser(string baseUrl, int pagesCount)
         {
@@ -25,28 +38,63 @@ namespace InformationSearch
 
         public IEnumerable<string> GetLinks()
         {
-            var hashSet = new HashSet<string>(_pagesCount) { _baseUrl };
+            var hashSet = new HashSet<string>(_pagesCount);
 
-            while (hashSet.Count < _pagesCount)
+            foreach (var link in Links)
             {
-                var document = new HtmlWeb().Load(hashSet.Last());
+                var document = new HtmlWeb().Load(link);
+
                 var linkedPages = document.DocumentNode.Descendants("a")
                     .Select(node => node.GetAttributeValue("href", null))
-                    .Where(link => !string.IsNullOrEmpty(link) && link.StartsWith(_baseUrl));
+                    .Where(x => !string.IsNullOrEmpty(x) && x.StartsWith(_baseUrl) && x.EndsWith(".html"));
 
                 foreach (var page in linkedPages)
                 {
                     if (!hashSet.Contains(page))
                     {
-                        hashSet.Add(page);
-
-                        if (hashSet.Count == _pagesCount)
+                        var downloadedPage = new HtmlWeb().Load(page);
+                        if (downloadedPage.DocumentNode.SelectNodes("//div[@class='article__text']") != null)
                         {
-                            break;
+                            hashSet.Add(page);
+
+                            if (hashSet.Count == _pagesCount)
+                            {
+                                break;
+                            }
                         }
                     }
                 }
+                if (hashSet.Count == _pagesCount)
+                {
+                    break;
+                }
             }
+
+            //while (hashSet.Count < _pagesCount)
+            //{
+            //    var document = new HtmlWeb().Load(hashSet.Last());
+
+            //    var linkedPages = document.DocumentNode.Descendants("a")
+            //        .Select(node => node.GetAttributeValue("href", null))
+            //        .Where(link => !string.IsNullOrEmpty(link) && link.StartsWith(_baseUrl));
+
+            //    foreach (var page in linkedPages)
+            //    {
+            //        if (!hashSet.Contains(page))
+            //        {
+            //            var downloadedPage = new HtmlWeb().Load(page);
+            //            if (downloadedPage.DocumentNode.SelectNodes("//div[@class='article__text']") != null)
+            //            {
+            //                hashSet.Add(page);
+
+            //                if (hashSet.Count == _pagesCount)
+            //                {
+            //                    break;
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
 
             return hashSet;
         }
@@ -59,8 +107,8 @@ namespace InformationSearch
             foreach (var link in links)
             {
                 var document = new HtmlWeb().LoadFromWebAsync(link, Encoding.UTF8).Result;
-
-                var text = document.DocumentNode.InnerText;
+                var s = document.DocumentNode.SelectNodes("//div[@class='article__text']");
+                var text = string.Join(' ', document.DocumentNode.SelectNodes("//div[@class='article__text']").Select(x => x.InnerText));
                 text = Regex.Replace(text, @"\s+", " ").Trim();
 
                 Interlocked.Increment(ref index);
@@ -68,6 +116,6 @@ namespace InformationSearch
             }
 
             return documents;
-        }
+         }
     }
 }
