@@ -14,10 +14,11 @@ namespace InformationSearch
         public static int PagesCount => 100;
         private static string RootPath = @"C:\Projects\InformationSearch";
         private static string StopWordsPath = $@"{RootPath}\InformationSearch\StopWords.txt";
-        private static string Task1Path => $@"{RootPath}\Task1Updated";
-        private static string Task2Path => $@"{RootPath}\Task2Updated";
-        private static string Task3Path => $@"{RootPath}\Task3Updated";
-        private static string Task4Path => $@"{RootPath}\Task4Updated";
+        private static string Task1Path => $@"{RootPath}\Task1";
+        private static string Task2Path => $@"{RootPath}\Task2";
+        private static string Task3Path => $@"{RootPath}\Task3";
+        private static string Task4Path => $@"{RootPath}\Task4";
+        private static string Task5Path => $@"{RootPath}\Task5";
         private static Lemmatizer Lemmatizer;
 
         static void Main(string[] args)
@@ -25,7 +26,25 @@ namespace InformationSearch
             //ProcessPages();
             //Lemmatize(new Lemmatizer(new StemDownloader().GetLocalPath()));
             //File.WriteAllLines($"{Task3Path}\\searchResult.txt", Search("арестовали появится заблокированы").Select(x => x.ToString()));
-            CreateTfIdf();
+            //CreateTfIdf();
+            //var result = BooleanSearch("брифинг аналогичной безопасности");
+            //foreach (var link in result)
+            //{
+            //    Console.WriteLine(link);
+            //}
+        }
+
+        private static void VectorSearch(string query)
+        {
+
+        }
+
+        private static void LemmatizeAllPagesAndWrite()
+        {
+            for (int i = 0; i < PagesCount; i++)
+            {
+                
+            }
         }
 
         private static void CreateTfIdf()
@@ -74,13 +93,13 @@ namespace InformationSearch
                             }
                         }
                         var tf = Convert.ToDouble(wordEntriesCount) / text.Count;
-                        writer.WriteLine($"{lemma} tf={tf:0.#######} idf={idf:0.#######} tf-idf={tf*idf:0.#######}");
+                        writer.WriteLine($"{lemma} tf={tf:0.#######} idf={idf:0.#######} tf-idf={tf * idf:0.#######}");
                     }
                 }
             }
         }
 
-        private static List<int> Search(string query)
+        private static List<string> BooleanSearch(string query)
         {
             var stopwords = File.ReadAllLines(StopWordsPath);
             var words = query.Split(" ", StringSplitOptions.RemoveEmptyEntries).Where(x => x != "" && !stopwords.Contains(x)).ToList();
@@ -98,66 +117,50 @@ namespace InformationSearch
                 }
             }
 
-            var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
-            var excludeLemmas = new HashSet<string>();
-            foreach (var excludeWord in excludeWords)
-            {
-                var res = lemmatizer.Lemmatize(excludeWord);
-                var lemma = GetLemma(res);
-                if (lemma != null)
-                {
-                    excludeLemmas.Add(lemma);
-                }
-            }
-            var includeLemmas = new HashSet<string>();
-            foreach (var includeWord in includeWords)
-            {
-                var res = lemmatizer.Lemmatize(includeWord);
-                var lemma = GetLemma(res);
-                if (lemma != null)
-                {
-                    includeLemmas.Add(lemma);
-                }
-            }
-
-            if (!includeLemmas.Any() && !excludeLemmas.Any())
-            {
-                return new List<int>();
-            }
 
             var lemmasWithIndexes = File.ReadAllLines($"{Task3Path}\\invertedIndex.txt");
             var lemmaToIndexesDict = new Dictionary<string, HashSet<int>>();
             foreach (var lemmaWithIndexes in lemmasWithIndexes)
             {
                 var parsedString = lemmaWithIndexes.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                lemmaToIndexesDict.Add(parsedString[0], new HashSet<int>(parsedString.Skip(1).Select(x => int.Parse(x))));
+                lemmaToIndexesDict.Add(parsedString[0], new HashSet<int>(parsedString.Skip(1).Select(int.Parse)));
             }
 
+            var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
+            var excludeLemmas = lemmatizer.LemmatizeWordsList(excludeWords).Select(x => x.ToLowerInvariant()).Where(x => lemmaToIndexesDict.ContainsKey(x)).ToList();
+            var includeLemmas = lemmatizer.LemmatizeWordsList(includeWords).Select(x => x.ToLowerInvariant()).Where(x => lemmaToIndexesDict.ContainsKey(x)).ToList();
+
+            if (!includeLemmas.Any() && !excludeLemmas.Any())
+            {
+                return new List<string>();
+            }
+
+            var documentIndexesSet = new HashSet<int>();
             if (includeLemmas.Any())
             {
-                var result = lemmaToIndexesDict[includeLemmas.FirstOrDefault()];
-                var firstSkippedIncludeLemmas = includeLemmas.Skip(1);
-                foreach (var includeLemma in firstSkippedIncludeLemmas)
+                var firstIncludeLemma = includeLemmas.FirstOrDefault();
+                documentIndexesSet.UnionWith(lemmaToIndexesDict[firstIncludeLemma!]);;
+                foreach (var includeLemma in includeLemmas.Skip(1))
                 {
-                    result.IntersectWith(lemmaToIndexesDict[includeLemma]);
+                    documentIndexesSet.IntersectWith(lemmaToIndexesDict[includeLemma]);
                 }
-
-                return result.ToList();
             }
-
             if (excludeLemmas.Any())
             {
-                var result = lemmaToIndexesDict[excludeLemmas.FirstOrDefault()];
-                var firstSkippedExcludeLemmas = excludeLemmas.Skip(1);
-                foreach (var excludeLemma in firstSkippedExcludeLemmas)
+                foreach (var excludeLemma in excludeLemmas)
                 {
-                    result.IntersectWith(lemmaToIndexesDict[excludeLemma]);
+                    documentIndexesSet.ExceptWith(lemmaToIndexesDict[excludeLemma]);
                 }
-
-                return result.ToList();
             }
 
-            return new List<int>();
+            var resultLinks = new List<string>();
+            var links = File.ReadAllLines($"{Task1Path}\\index.txt");
+            foreach (var index in documentIndexesSet)
+            {
+                resultLinks.Add(links[index]);
+            }
+
+            return resultLinks;
         }
 
         private static string GetLemma(WordDefenition[] definitions)
