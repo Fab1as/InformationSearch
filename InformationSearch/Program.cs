@@ -32,22 +32,98 @@ namespace InformationSearch
             //{
             //    Console.WriteLine(link);
             //}
+            //LemmatizeAllPagesAndWrite();
+            var result = VectorSearch("задача года греции");
+            foreach (var link in result)
+            {
+                Console.WriteLine(link);
+            }
         }
 
-        private static void VectorSearch(string query)
+        private static IEnumerable<string> VectorSearch(string query)
         {
+            var queryWordToFrequencyDict = new Dictionary<string, int>();
+            var queryWords = query.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(x => x.ToLowerInvariant()).ToList();
+            var queryWordsSet = queryWords.ToImmutableSortedSet();
+            foreach (var queryWord in queryWordsSet)
+            {
+                queryWordToFrequencyDict.Add(queryWord, queryWords.Count(x => string.Equals(queryWord, x, StringComparison.InvariantCultureIgnoreCase)));
+            }
 
+            var queryVector = new Dictionary<string, double>();
+            var lemmaToIndexesDict = GetLemmasWithIndexes();
+            var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
+            var maxFrequency = queryWordToFrequencyDict.Max(x => x.Value);
+            double queryLength = 0;
+            foreach (var (queryWord, frequency) in queryWordToFrequencyDict)
+            {
+                var lemmatizedQueryWord = GetLemma(lemmatizer.Lemmatize(queryWord));
+                if (lemmaToIndexesDict.ContainsKey(lemmatizedQueryWord))
+                {
+                    var vectorElement = ((double) frequency / maxFrequency) * Math.Log10((double) PagesCount / lemmaToIndexesDict[lemmatizedQueryWord].Count);
+                    queryVector.Add(lemmatizedQueryWord, vectorElement);
+                    queryLength += vectorElement * vectorElement;
+                }
+            }
+
+            queryLength = Math.Sqrt(queryLength);
+
+            var documentsLength = new List<double>();
+            var lemmaToTfIdfDict = new Dictionary<string, double>();
+            for (int i = 0; i < PagesCount; i++)
+            {
+                var text = File.ReadAllLines($"{Task4Path}\\page_{i + 1}_tfidf.txt");
+                var squaredDocumentLength = 0.0;
+                foreach (var lemmaWithTfIdfString in text)
+                {
+                    var wordWithTfIdf = lemmaWithTfIdfString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    var word = wordWithTfIdf[0];
+                    var tfIdfString = wordWithTfIdf[3];
+                    var tfIdf = double.Parse(tfIdfString.Substring(7));
+                    squaredDocumentLength += tfIdf * tfIdf;
+                    if (!lemmaToTfIdfDict.ContainsKey(word)) lemmaToTfIdfDict.Add(word, tfIdf);
+                }
+                documentsLength.Add(Math.Sqrt(squaredDocumentLength));
+            }
+
+            if (queryLength == 0) return File.ReadAllLines($"{Task1Path}\\index.txt");
+
+            var documentCosineSimilarities = new List<(int pageIndex, double cosineSimilarity)>();
+            for (int i = 0; i < PagesCount; i++)
+            {
+                double cosineSimilarity = 0;
+                foreach (var (lemmatizedQueryWord, vectorElementValue) in queryVector)
+                {
+                    cosineSimilarity += vectorElementValue * lemmaToTfIdfDict[lemmatizedQueryWord];
+                }
+                documentCosineSimilarities.Add((i, cosineSimilarity / (queryLength * documentsLength[i])));
+            }
+
+            documentCosineSimilarities = documentCosineSimilarities.OrderByDescending(x => x.cosineSimilarity).ToList();
+            var resultLinks = new List<string>();
+            var links = File.ReadAllLines($"{Task1Path}\\index.txt");
+            foreach (var documentCosineSimilarity in documentCosineSimilarities)
+            {
+                resultLinks.Add(links[documentCosineSimilarity.pageIndex]);
+            }
+
+            return resultLinks;
         }
 
         private static void LemmatizeAllPagesAndWrite()
         {
+            var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
             for (int i = 0; i < PagesCount; i++)
             {
-                
+                var text = File.ReadAllText($"{Task1Path}\\pages\\page_{i + 1}.txt");
+                var words = ParseTextToWordsInLower(text);
+                var lemmatizedWords = lemmatizer.LemmatizeWordsList(words);
+                lemmatizedWords.Sort();
+                File.WriteAllLines($"{Task5Path}\\sortedLemmatizedPages\\page_{i + 1}.txt", lemmatizedWords);
             }
         }
 
-        private static void CreateTfIdf()
+        private static Dictionary<string, List<int>> GetLemmasWithIndexes()
         {
             var lemmasWithIndexes = File.ReadAllLines($"{Task3Path}\\invertedIndex.txt");
             var lemmaToIndexesDict = new Dictionary<string, List<int>>();
@@ -57,22 +133,20 @@ namespace InformationSearch
                 lemmaToIndexesDict.Add(lemmaIndexes[0], new List<int>(lemmaIndexes.Skip(1).Select(int.Parse)));
             }
 
+            return lemmaToIndexesDict;
+        }
+
+        private static void CreateTfIdf()
+        {
+            var lemmaToIndexesDict = GetLemmasWithIndexes();
+
             var lemmatizer = new Lemmatizer(new StemDownloader().GetLocalPath());
             var texts = new List<List<string>>(100);
             for (int i = 0; i < PagesCount; i++)
             {
                 var fileText = File.ReadAllText($"{Task1Path}\\pages\\page_{i + 1}.txt");
                 var words = ParseTextToWordsInLower(fileText);
-                var lemmatizedWords = new List<string>();
-                foreach (var word in words)
-                {
-                    var res = lemmatizer.Lemmatize(word);
-                    var lemma = GetLemma(res);
-                    if (lemma != null)
-                    {
-                        lemmatizedWords.Add(lemma);
-                    }
-                }
+                var lemmatizedWords = lemmatizer.LemmatizeWordsList(words);
                 texts.Add(lemmatizedWords);
             }
 
