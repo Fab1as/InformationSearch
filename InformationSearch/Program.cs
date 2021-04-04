@@ -33,8 +33,8 @@ namespace InformationSearch
             //    Console.WriteLine(link);
             //}
             //LemmatizeAllPagesAndWrite();
-            var result = VectorSearch("задача года греции");
-            foreach (var link in result)
+            var resultLinks = VectorSearch("устанавливать приложения других производителей");
+            foreach (var link in resultLinks)
             {
                 Console.WriteLine(link);
             }
@@ -58,9 +58,9 @@ namespace InformationSearch
             foreach (var (queryWord, frequency) in queryWordToFrequencyDict)
             {
                 var lemmatizedQueryWord = GetLemma(lemmatizer.Lemmatize(queryWord));
-                if (lemmaToIndexesDict.ContainsKey(lemmatizedQueryWord))
+                if (lemmatizedQueryWord != null && lemmaToIndexesDict.ContainsKey(lemmatizedQueryWord))
                 {
-                    var vectorElement = ((double) frequency / maxFrequency) * Math.Log10((double) PagesCount / lemmaToIndexesDict[lemmatizedQueryWord].Count);
+                    var vectorElement = ((double)frequency / maxFrequency) * Math.Log10((double)PagesCount / lemmaToIndexesDict[lemmatizedQueryWord].Count);
                     queryVector.Add(lemmatizedQueryWord, vectorElement);
                     queryLength += vectorElement * vectorElement;
                 }
@@ -69,11 +69,12 @@ namespace InformationSearch
             queryLength = Math.Sqrt(queryLength);
 
             var documentsLength = new List<double>();
-            var lemmaToTfIdfDict = new Dictionary<string, double>();
+            var pageLemmasToTfIdfDictList = new List<Dictionary<string, double>>();
             for (int i = 0; i < PagesCount; i++)
             {
                 var text = File.ReadAllLines($"{Task4Path}\\page_{i + 1}_tfidf.txt");
                 var squaredDocumentLength = 0.0;
+                pageLemmasToTfIdfDictList.Add(new Dictionary<string, double>());
                 foreach (var lemmaWithTfIdfString in text)
                 {
                     var wordWithTfIdf = lemmaWithTfIdfString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -81,7 +82,7 @@ namespace InformationSearch
                     var tfIdfString = wordWithTfIdf[3];
                     var tfIdf = double.Parse(tfIdfString.Substring(7));
                     squaredDocumentLength += tfIdf * tfIdf;
-                    if (!lemmaToTfIdfDict.ContainsKey(word)) lemmaToTfIdfDict.Add(word, tfIdf);
+                    pageLemmasToTfIdfDictList[i].Add(word, tfIdf);
                 }
                 documentsLength.Add(Math.Sqrt(squaredDocumentLength));
             }
@@ -94,7 +95,10 @@ namespace InformationSearch
                 double cosineSimilarity = 0;
                 foreach (var (lemmatizedQueryWord, vectorElementValue) in queryVector)
                 {
-                    cosineSimilarity += vectorElementValue * lemmaToTfIdfDict[lemmatizedQueryWord];
+                    if (pageLemmasToTfIdfDictList[i].ContainsKey(lemmatizedQueryWord))
+                    {
+                        cosineSimilarity += vectorElementValue * pageLemmasToTfIdfDictList[i][lemmatizedQueryWord];
+                    }
                 }
                 documentCosineSimilarities.Add((i, cosineSimilarity / (queryLength * documentsLength[i])));
             }
