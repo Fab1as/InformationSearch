@@ -33,7 +33,12 @@ namespace InformationSearch
             //    Console.WriteLine(link);
             //}
             //LemmatizeAllPagesAndWrite();
-            var resultLinks = VectorSearch("устанавливать приложения других производителей");
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.InputEncoding = Encoding.GetEncoding(1251); // у меня en-US версия Windows из-за чего русский текст не воспринимается консолью
+            Console.WriteLine("Введите ваш запрос:");
+            var query = Console.ReadLine();
+            var resultLinks = VectorSearch(query);
             foreach (var link in resultLinks)
             {
                 Console.WriteLine(link);
@@ -58,11 +63,18 @@ namespace InformationSearch
             foreach (var (queryWord, frequency) in queryWordToFrequencyDict)
             {
                 var lemmatizedQueryWord = GetLemma(lemmatizer.Lemmatize(queryWord));
-                if (lemmatizedQueryWord != null && lemmaToIndexesDict.ContainsKey(lemmatizedQueryWord))
+                if (lemmatizedQueryWord != null)
                 {
-                    var vectorElement = ((double)frequency / maxFrequency) * Math.Log10((double)PagesCount / lemmaToIndexesDict[lemmatizedQueryWord].Count);
-                    queryVector.Add(lemmatizedQueryWord, vectorElement);
-                    queryLength += vectorElement * vectorElement;
+                    if (lemmaToIndexesDict.ContainsKey(lemmatizedQueryWord))
+                    {
+                        var vectorElement = ((double)frequency / maxFrequency) * Math.Log10((double)PagesCount / lemmaToIndexesDict[lemmatizedQueryWord].Count);
+                        queryVector.Add(lemmatizedQueryWord, vectorElement);
+                        queryLength += vectorElement * vectorElement;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Слово {queryWord} не входит в индекс");
+                    }
                 }
             }
 

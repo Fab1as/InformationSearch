@@ -13,4 +13,7 @@ C:\Projects\InformationSearch\InformationSearch\obj\Debug\netcoreapp3.1\Informat
 C:\Projects\InformationSearch\InformationSearch\obj\Debug\netcoreapp3.1\InformationSearch.pdb
 C:\Projects\InformationSearch\InformationSearch\obj\Debug\netcoreapp3.1\InformationSearch.genruntimeconfig.cache
 C:\Projects\InformationSearch\InformationSearch\bin\Debug\netcoreapp3.1\Newtonsoft.Json.dll
+C:\Projects\InformationSearch\InformationSearch\bin\Debug\netcoreapp3.1\System.Runtime.CompilerServices.Unsafe.dll
+C:\Projects\InformationSearch\InformationSearch\bin\Debug\netcoreapp3.1\System.Text.Encoding.CodePages.dll
+C:\Projects\InformationSearch\InformationSearch\bin\Debug\netcoreapp3.1\runtimes\win\lib\netcoreapp2.0\System.Text.Encoding.CodePages.dll
 C:\Projects\InformationSearch\InformationSearch\obj\Debug\netcoreapp3.1\InformationSearch.csproj.CoreCompileInputs.cache
